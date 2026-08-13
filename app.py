@@ -56,6 +56,26 @@ def _load_engine():
 threading.Thread(target=_load_engine, daemon=True).start()
 
 
+# ── Global Error Handlers ──────────────────────────────────────────────────────
+
+@app.errorhandler(413)
+def handle_large_file(e):
+    return jsonify({"error": "File size exceeds the 50 MB limit."}), 413
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"error": "Internal server error. Engine may still be loading."}), 500
+
+@app.errorhandler(503)
+def handle_503(e):
+    return jsonify({"error": "Engine is still initializing. Please wait a few seconds and try again."}), 503
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.exception("Unhandled server error: %s", e)
+    return jsonify({"error": str(e)}), 500
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")

@@ -830,17 +830,23 @@
   async function pollStatus() {
     try {
       const r = await fetch('/api/status');
+      const contentType = r.headers.get('content-type') || '';
+      if (!r.ok || !contentType.includes('application/json')) {
+        pillLabel.textContent = 'Engine loading…';
+        setTimeout(pollStatus, 3000);
+        return;
+      }
       const d = await r.json();
       if (d.ready) {
         engineReady = true;
-        pillDot.classList.add('ready');
+        pillDot.className = 'pill-dot ready';
         pillLabel.textContent = 'Engine ready';
         if (selectedFile) submitBtn.disabled = false;
       } else if (d.error) {
-        pillDot.classList.add('error');
+        pillDot.className = 'pill-dot error';
         pillLabel.textContent = 'Engine error';
       } else {
-        pillLabel.textContent = 'Loading engine…';
+        pillLabel.textContent = 'Engine loading…';
         setTimeout(pollStatus, 2500);
       }
     } catch { setTimeout(pollStatus, 3000); }
@@ -931,7 +937,15 @@
 
     try {
       const res  = await fetch('/api/redact', { method: 'POST', body: fd });
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const errText = await res.text();
+        throw new Error(`Server returned status ${res.status}. Engine may be restarting or initializing. Please try again in a few seconds.`);
+      }
 
       finishSteps();
       await new Promise(r => setTimeout(r, 400));
@@ -948,6 +962,7 @@
       showErr(err.message);
     }
   });
+
 
   /* ── Result ─────────────────────────────────────────────────── */
   function showResult(data) {
