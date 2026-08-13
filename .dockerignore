@@ -1,0 +1,16 @@
+**/__pycache__
+**/*.py[cod]
+**/*.pyo
+*.docx
+workcheck_predictions.json
+~$*
+.git
+.gitignore
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+Evaluation_Report.md
+README.md

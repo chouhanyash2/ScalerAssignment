@@ -1,15 +1,6 @@
 {
+  "_comment": "NOTE: Vercel is NOT supported for this app. Presidio + spaCy exceed Vercel's 50MB function size limit. Deploy on Render (render.yaml) or Railway instead.",
   "version": 2,
-  "builds": [
-    {
-      "src": "app.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "app.py"
-    }
-  ]
+  "builds": [],
+  "routes": []
 }

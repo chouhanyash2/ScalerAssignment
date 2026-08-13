@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pii-redaction-tool
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free          # upgrade to starter ($7/mo) for always-on
+    healthCheckPath: /api/status
+    envVars:
+      - key: PORT
+        value: 8000
+    autoDeploy: true    # auto-redeploy on every push to main

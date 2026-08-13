@@ -22,3 +22,6 @@ workcheck_predictions.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker
+.docker/
