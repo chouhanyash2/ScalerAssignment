@@ -91,7 +91,12 @@ def normalize_for_ner(text: str) -> tuple[str, bool]:
 
 def build_analyzer() -> AnalyzerEngine:
     """Build a Presidio AnalyzerEngine backed by the best available spaCy model."""
-    for model_name in ("en_core_web_lg", "en_core_web_trf", "en_core_web_md", "en_core_web_sm"):
+    import os
+    env_model = os.environ.get("SPACY_MODEL")
+    candidates = [env_model] if env_model else ["en_core_web_sm", "en_core_web_md", "en_core_web_lg", "en_core_web_trf"]
+    candidates = [c for c in candidates if c]
+
+    for model_name in candidates:
         try:
             configuration = {
                 "nlp_engine_name": "spacy",
@@ -106,7 +111,7 @@ def build_analyzer() -> AnalyzerEngine:
     else:
         sys.exit(
             "No spaCy model found. Run:\n"
-            "  python -m spacy download en_core_web_lg"
+            "  python -m spacy download en_core_web_sm"
         )
 
     analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])

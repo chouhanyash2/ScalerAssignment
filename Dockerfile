@@ -14,10 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 
-# Install all Python dependencies (including gunicorn) + download spaCy model
+# Install Python dependencies + lightweight spaCy model (fits Render 512MB RAM free tier)
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    && python -m spacy download en_core_web_lg
+    && python -m spacy download en_core_web_sm
 
 # ── Stage 2: Runtime ────────────────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -28,7 +28,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
-    PORT=8000
+    PORT=8000 \
+    SPACY_MODEL=en_core_web_sm
 
 # Copy installed packages and binaries from builder stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
