@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PII Redact — Document Privacy Tool</title>
+  <meta name="description" content="Upload a Word document. Get a redacted version back with all personal information replaced by realistic fake data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f0f;
+      --surface:     #1a1a1a;
+      --surface2:    #222222;
+      --border:      #2e2e2e;
+      --border-lit:  #3d3d3d;
+      --teal:        #14b8a6;
+      --teal-dim:    rgba(20,184,166,0.12);
+      --teal-glow:   rgba(20,184,166,0.2);
+      --amber:       #f59e0b;
+      --amber-dim:   rgba(245,158,11,0.1);
+      --red:         #ef4444;
+      --green:       #22c55e;
+      --text:        #ededed;
+      --text-2:      #a3a3a3;
+      --text-3:      #525252;
+      --mono:        'DM Mono', monospace;
+      --sans:        'DM Sans', sans-serif;
+      --r:           10px;
+      --r-sm:        7px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────── */
+    .topbar {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--teal);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .engine-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      transition: background 0.4s;
+    }
+    .pill-dot.ready  { background: var(--green); }
+    .pill-dot.error  { background: var(--red); }
+    #pillLabel { transition: color 0.3s; }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+
+    /* ── Page header ─────────────────────────────────────────── */
+    .page-header {
+      margin-bottom: 40px;
+    }
+
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--teal);
+      background: var(--teal-dim);
+      border: 1px solid rgba(20,184,166,0.2);
+      border-radius: 4px;
+      padding: 3px 8px;
+      letter-spacing: 0.04em;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .desc {
+      color: var(--text-2);
+      font-size: 0.95rem;
+      max-width: 480px;
+      line-height: 1.65;
+    }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .section {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section:last-child { border-bottom: none; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* ── Drop zone ───────────────────────────────────────────── */
+    .drop-zone {
+      border: 1.5px dashed var(--border-lit);
+      border-radius: var(--r-sm);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.over {
+      border-color: var(--teal);
+      background: var(--teal-dim);
+    }
+
+    .drop-zone.has-file {
+      border-color: var(--green);
+      border-style: solid;
+      background: rgba(34,197,94,0.05);
+    }
+
+    .dz-icon {
+      margin: 0 auto 14px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      transition: color 0.2s;
+    }
+    .drop-zone:hover .dz-icon,
+    .drop-zone.over .dz-icon { color: var(--teal); }
+    .drop-zone.has-file .dz-icon { color: var(--green); }
+
+    .dz-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+
+    .dz-sub {
+      font-size: 0.82rem;
+      color: var(--text-3);
+    }
+
+    .dz-link {
+      color: var(--teal);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    #file-input { display: none; }
+
+    /* File selected row */
+    .file-row {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 11px 14px;
+    }
+    .file-row.show { display: flex; }
+
+    .file-row-icon { color: var(--text-2); flex-shrink: 0; }
+    .file-row-info { flex: 1; min-width: 0; }
+    .file-row-name {
+      font-weight: 500;
+      font-size: 0.88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-row-size { font-size: 0.78rem; color: var(--text-3); margin-top: 1px; }
+
+    .file-row-rm {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-3); padding: 4px; border-radius: 4px;
+      display: flex; align-items: center;
+      transition: color 0.2s;
+    }
+    .file-row-rm:hover { color: var(--red); }
+
+    /* ── Settings ────────────────────────────────────────────── */
+    .settings-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 480px) { .settings-row { grid-template-columns: 1fr; } }
+
+    label.field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 32px;
+    }
+
+    select:focus, input[type="number"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--teal-dim);
+    }
+
+    /* ── Submit button ───────────────────────────────────────── */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f0f0f;
+      background: var(--teal);
+      border: none;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+      letter-spacing: -0.01em;
+    }
+    .btn-submit:hover:not(:disabled) { background: #0d9488; }
+    .btn-submit:active:not(:disabled) { transform: scale(0.99); }
+    .btn-submit:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Error ───────────────────────────────────────────────── */
+    .err-box {
+      display: none;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--r-sm);
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      color: #fca5a5;
+      margin-top: 16px;
+    }
+    .err-box.show { display: block; }
+
+    /* ── Progress ────────────────────────────────────────────── */
+    .prog-wrap {
+      display: none;
+      padding: 28px 24px;
+    }
+    .prog-wrap.show { display: block; }
+
+    .prog-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .prog-spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border-lit);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .prog-label { font-weight: 600; font-size: 0.9rem; }
+    .prog-sub { font-size: 0.8rem; color: var(--text-3); margin-top: 2px; }
+
+    .prog-bar-outer {
+      height: 3px;
+      background: var(--surface2);
+      border-radius: 100px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .prog-bar-inner {
+      height: 100%;
+      background: var(--teal);
+      border-radius: 100px;
+      width: 5%;
+      transition: width 0.4s ease;
+    }
+
+    .prog-steps { display: flex; flex-direction: column; gap: 8px; }
+
+    .prog-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.83rem;
+      color: var(--text-3);
+      transition: color 0.3s;
+    }
+    .prog-step.active { color: var(--text-2); }
+    .prog-step.done   { color: var(--green); }
+
+    .step-check {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-lit);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .prog-step.active .step-check { border-color: var(--teal); }
+    .prog-step.done   .step-check { border-color: var(--green); background: var(--green); }
+
+    /* ── Results ─────────────────────────────────────────────── */
+    .result-wrap { display: none; }
+    .result-wrap.show { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-icon-box {
+      width: 36px; height: 36px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: var(--green);
+    }
+
+    .result-title { font-weight: 700; font-size: 0.95rem; }
+    .result-sub   { font-size: 0.82rem; color: var(--text-3); margin-top: 3px; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-cell {
+      padding: 18px 24px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-cell:last-child { border-right: none; }
+
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .stat-lbl { font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Entity table */
+    .entity-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+
+    .entity-head {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ent-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .ent-row:last-child { border-bottom: none; }
+
+    .ent-left { display: flex; align-items: center; gap: 8px; }
+
+    .ent-chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .ent-bar-outer {
+      flex: 1;
+      height: 3px;
+      background: var(--surface2);
+      border-radius: 100px;
+      min-width: 40px;
+    }
+    .ent-bar-inner {
+      height: 100%;
+      background: var(--teal);
+      border-radius: 100px;
+      transition: width 0.8s ease;
+    }
+
+    .ent-count {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* Download button */
+    .btn-dl {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px;
+      font-family: var(--sans);
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #0f0f0f;
+      background: var(--green);
+      border: none;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-dl:hover { background: #16a34a; }
+    .btn-dl:active { transform: scale(0.99); }
+
+    .btn-another {
+      width: 100%;
+      padding: 11px;
+      margin-top: 10px;
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text-3);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-another:hover { color: var(--text-2); border-color: var(--border-lit); }
+
+    .actions-section { padding: 20px 24px; }
+
+    /* ── How it works ────────────────────────────────────────── */
+    .how-it-works {
+      margin-top: 24px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+
+    .how-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    .how-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .how-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.85rem;
+    }
+
+    .how-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--teal);
+      background: var(--teal-dim);
+      border-radius: 4px;
+      padding: 2px 7px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      font-weight: 500;
+    }
+
+    .how-text { color: var(--text-2); line-height: 1.5; }
+    .how-text strong { color: var(--text); font-weight: 500; }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    footer a { color: var(--text-3); text-decoration: none; }
+    footer a:hover { color: var(--text-2); }
+
+    .footer-stack { display: flex; gap: 16px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f0f0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      PII Redact
+    </a>
+    <div class="topbar-right">
+      <div class="engine-pill">
+        <div class="pill-dot" id="pillDot"></div>
+        <span id="pillLabel">Loading engine…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="page">
+
+    <div class="page-header">
+      <div class="tag">v1.0 — beta</div>
+      <h1>Document PII Redaction</h1>
+      <p class="desc">Upload a Word document and get back a clean copy with every name, email, phone number, address, and ID replaced by realistic fake data. Formatting is preserved.</p>
+    </div>
+
+    <!-- Error box -->
+    <div class="err-box" id="errBox"></div>
+
+    <!-- Upload card -->
+    <div class="card" id="uploadCard">
+
+      <!-- File input section -->
+      <div class="section">
+        <div class="section-label">1 — Document</div>
+        <div class="drop-zone" id="dropZone">
+          <div class="dz-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div class="dz-title">Drop your .docx file here</div>
+          <div class="dz-sub">or <span class="dz-link" id="browseLink">click to browse</span></div>
+          <input type="file" id="file-input" accept=".docx" />
+        </div>
+
+        <div class="file-row" id="fileRow">
+          <div class="file-row-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-row-info">
+            <div class="file-row-name" id="rowName">–</div>
+            <div class="file-row-size" id="rowSize">–</div>
+          </div>
+          <button class="file-row-rm" id="fileRemove" title="Remove file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings section -->
+      <div class="section">
+        <div class="section-label">2 — Settings</div>
+        <div class="settings-row">
+          <div>
+            <label class="field-label" for="locale">Replacement locale</label>
+            <select id="locale">
+              <option value="en_IN" selected>Indian (en_IN)</option>
+              <option value="en_US">American (en_US)</option>
+              <option value="en_GB">British (en_GB)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="seed">Random seed</label>
+            <input type="number" id="seed" value="42" min="0" max="99999" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit section -->
+      <div class="section">
+        <button class="btn-submit" id="submitBtn" disabled>Run Redaction</button>
+      </div>
+
+    </div><!-- /upload card -->
+
+    <!-- Progress card -->
+    <div class="card" id="progCard" style="display:none;">
+      <div class="prog-wrap show" id="progWrap">
+        <div class="prog-top">
+          <div class="prog-spinner"></div>
+          <div>
+            <div class="prog-label">Redacting document…</div>
+            <div class="prog-sub">Usually takes 1–3 minutes depending on document size.</div>
+          </div>
+        </div>
+        <div class="prog-bar-outer">
+          <div class="prog-bar-inner" id="progBar"></div>
+        </div>
+        <div class="prog-steps">
+          <div class="prog-step" id="s1"><div class="step-check"></div>Loading NLP pipeline</div>
+          <div class="prog-step" id="s2"><div class="step-check"></div>Detecting PII spans</div>
+          <div class="prog-step" id="s3"><div class="step-check"></div>Generating synthetic replacements</div>
+          <div class="prog-step" id="s4"><div class="step-check"></div>Writing redacted document</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result card -->
+    <div class="card" id="resultCard" style="display:none;">
+      <div class="result-wrap show" id="resultWrap">
+
+        <div class="result-header">
+          <div class="result-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div>
+            <div class="result-title">Redaction complete</div>
+            <div class="result-sub" id="resultSub">–</div>
+          </div>
+        </div>
+
+        <div class="stats-row" id="statsRow">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="entity-section">
+          <div class="entity-head">
+            <span>Entity type</span>
+            <span>Count</span>
+          </div>
+          <div id="entityRows">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+        <div class="actions-section">
+          <a href="#" class="btn-dl" id="dlBtn" download>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download redacted file
+          </a>
+          <button class="btn-another" id="anotherBtn">Redact another document</button>
+        </div>
+
+      </div>
+    </div><!-- /result card -->
+
+    <!-- How it works -->
+    <div class="how-it-works">
+      <div class="how-title">How it works</div>
+      <div class="how-list">
+        <div class="how-item">
+          <div class="how-num">01</div>
+          <div class="how-text"><strong>Detection</strong> — spaCy's NER model finds names, orgs, and locations. Custom regex patterns handle structured data like emails, phone numbers, Indian PAN/Aadhaar, CINs, and GSTINs.</div>
+        </div>
+        <div class="how-item">
+          <div class="how-num">02</div>
+          <div class="how-text"><strong>Replacement</strong> — Every detected span is replaced with a realistic fake generated by Faker (locale-aware). The same original text always maps to the same fake, so the document stays coherent.</div>
+        </div>
+        <div class="how-item">
+          <div class="how-num">03</div>
+          <div class="how-text"><strong>Output</strong> — The redacted .docx is rebuilt preserving all original formatting — bold, italic, tables, headers, and footers are all intact.</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>Built with <a href="https://microsoft.github.io/presidio/" target="_blank">Presidio</a> &amp; <a href="https://faker.readthedocs.io/" target="_blank">Faker</a></span>
+      <div class="footer-stack">
+        <span>21 PII types</span>
+        <span>spaCy en_core_web_lg</span>
+      </div>
+    </footer>
+
+  </div><!-- /page -->
+
+<script>
+  /* ── refs ──────────────────────────────────────────────────── */
+  const pillDot   = document.getElementById('pillDot');
+  const pillLabel = document.getElementById('pillLabel');
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = document.getElementById('file-input');
+  const fileRow   = document.getElementById('fileRow');
+  const rowName   = document.getElementById('rowName');
+  const rowSize   = document.getElementById('rowSize');
+  const fileRemove= document.getElementById('fileRemove');
+  const submitBtn = document.getElementById('submitBtn');
+  const errBox    = document.getElementById('errBox');
+  const uploadCard= document.getElementById('uploadCard');
+  const progCard  = document.getElementById('progCard');
+  const resultCard= document.getElementById('resultCard');
+  const progBar   = document.getElementById('progBar');
+  const dlBtn     = document.getElementById('dlBtn');
+  const anotherBtn= document.getElementById('anotherBtn');
+
+  let selectedFile = null;
+  let engineReady  = false;
+
+  /* ── Engine status ──────────────────────────────────────────── */
+  async function pollStatus() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      if (d.ready) {
+        engineReady = true;
+        pillDot.classList.add('ready');
+        pillLabel.textContent = 'Engine ready';
+        if (selectedFile) submitBtn.disabled = false;
+      } else if (d.error) {
+        pillDot.classList.add('error');
+        pillLabel.textContent = 'Engine error';
+      } else {
+        pillLabel.textContent = 'Loading engine…';
+        setTimeout(pollStatus, 2500);
+      }
+    } catch { setTimeout(pollStatus, 3000); }
+  }
+  pollStatus();
+
+  /* ── File handling ──────────────────────────────────────────── */
+  document.getElementById('browseLink').addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('click', e => { if (e.target.id !== 'browseLink') fileInput.click(); });
+  fileInput.addEventListener('change', e => e.target.files[0] && pickFile(e.target.files[0]));
+  fileRemove.addEventListener('click', e => { e.stopPropagation(); clearFile(); });
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('over');
+    if (e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]);
+  });
+
+  function pickFile(f) {
+    if (!f.name.toLowerCase().endsWith('.docx')) { showErr('Only .docx files are supported.'); return; }
+    clearErr();
+    selectedFile = f;
+    rowName.textContent = f.name;
+    rowSize.textContent = fmtBytes(f.size);
+    fileRow.classList.add('show');
+    dropZone.classList.add('has-file');
+    if (engineReady) submitBtn.disabled = false;
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = '';
+    fileRow.classList.remove('show');
+    dropZone.classList.remove('has-file');
+    submitBtn.disabled = true;
+  }
+
+  /* ── Progress steps ─────────────────────────────────────────── */
+  const stepIds = ['s1','s2','s3','s4'];
+  let stepIdx = 0, stepTimer = null;
+
+  function startSteps() {
+    stepIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active','done');
+    });
+    stepIdx = 0;
+    document.getElementById(stepIds[0]).classList.add('active');
+    progBar.style.width = '5%';
+
+    const widths = ['25%','55%','80%','95%'];
+    stepTimer = setInterval(() => {
+      document.getElementById(stepIds[stepIdx]).classList.replace('active','done');
+      stepIdx++;
+      if (stepIdx < stepIds.length) {
+        document.getElementById(stepIds[stepIdx]).classList.add('active');
+        progBar.style.width = widths[stepIdx];
+      } else {
+        clearInterval(stepTimer);
+      }
+    }, 2000);
+  }
+
+  function finishSteps() {
+    clearInterval(stepTimer);
+    stepIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active');
+      el.classList.add('done');
+    });
+    progBar.style.width = '100%';
+  }
+
+  /* ── Submit ─────────────────────────────────────────────────── */
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedFile || !engineReady) return;
+    clearErr();
+
+    uploadCard.style.display = 'none';
+    progCard.style.display = 'block';
+    startSteps();
+
+    const fd = new FormData();
+    fd.append('file',   selectedFile);
+    fd.append('locale', document.getElementById('locale').value);
+    fd.append('seed',   document.getElementById('seed').value);
+
+    try {
+      const res  = await fetch('/api/redact', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      finishSteps();
+      await new Promise(r => setTimeout(r, 400));
+
+      if (!res.ok || data.error) throw new Error(data.error || 'Something went wrong.');
+
+      progCard.style.display = 'none';
+      showResult(data);
+
+    } catch (err) {
+      clearInterval(stepTimer);
+      progCard.style.display = 'none';
+      uploadCard.style.display = '';
+      showErr(err.message);
+    }
+  });
+
+  /* ── Result ─────────────────────────────────────────────────── */
+  function showResult(data) {
+    const { stats, elapsed_seconds, download_token, download_name } = data;
+
+    document.getElementById('resultSub').textContent =
+      `${stats.total.toLocaleString()} spans replaced in ${elapsed_seconds}s`;
+
+    // Stats row
+    const types = Object.keys(stats.by_entity).length;
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-cell">
+        <div class="stat-num">${stats.total.toLocaleString()}</div>
+        <div class="stat-lbl">Spans replaced</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num">${types}</div>
+        <div class="stat-lbl">Entity types</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num">${elapsed_seconds}s</div>
+        <div class="stat-lbl">Processing time</div>
+      </div>
+    `;
+
+    // Entity rows
+    const sorted = Object.entries(stats.by_entity).sort((a,b) => b[1]-a[1]);
+    const maxVal  = sorted[0]?.[1] || 1;
+    document.getElementById('entityRows').innerHTML = sorted.map(([type, count]) => `
+      <div class="ent-row">
+        <div class="ent-left">
+          <div class="ent-chip">${type.replace(/_/g,' ')}</div>
+          <div class="ent-bar-outer"><div class="ent-bar-inner" style="width:${Math.round(count/maxVal*100)}%"></div></div>
+        </div>
+        <div class="ent-count">${count.toLocaleString()}</div>
+      </div>
+    `).join('');
+
+    // Download
+    dlBtn.href     = `/api/download/${download_token}?name=${encodeURIComponent(download_name)}`;
+    dlBtn.download = download_name;
+
+    resultCard.style.display = 'block';
+  }
+
+  /* ── Another ─────────────────────────────────────────────────── */
+  anotherBtn.addEventListener('click', () => {
+    resultCard.style.display = 'none';
+    clearFile();
+    clearErr();
+    uploadCard.style.display = '';
+  });
+
+  /* ── Helpers ─────────────────────────────────────────────────── */
+  function showErr(msg) { errBox.textContent = msg; errBox.classList.add('show'); }
+  function clearErr()   { errBox.textContent = '';  errBox.classList.remove('show'); }
+
+  function fmtBytes(b) {
+    if (b < 1024)      return b + ' B';
+    if (b < 1048576)   return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+</script>
+</body>
+</html>
