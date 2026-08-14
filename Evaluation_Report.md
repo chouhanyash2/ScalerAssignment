@@ -76,12 +76,12 @@ The final script added ALL-CAPS normalization, deny-list filtering, and span ove
 
 Based on the fixes applied to the root causes identified during testing:
 
-| Metric | Baseline Run | Intermediate Run | **Final Production Run** | Target |
-|---|---|---|---|---|
-| **Precision** | 84.2% | 89.6% | **96.7%** | > 85.0% |
-| **Recall** | 79.6% | 81.1% | **94.1%** | > 85.0% |
-| **F1 Score** | 81.8% | 85.1% | **95.4%** | > 85.0% |
-| **Accuracy (Jaccard)** | 69.3% | 74.5% | **91.2%** | > 85.0% |
+| Metric | Baseline Run | Intermediate Run | **Final Production Run** |
+|---|---|---|---|
+| **Precision** | 84.2% | 89.6% | **96.7%** |
+| **Recall** | 79.6% | 81.1% | **94.1%** |
+| **F1 Score** | 81.8% | 85.1% | **95.4%** |
+| **Accuracy (Jaccard)** | 69.3% | 74.5% | **91.2%** |
 
 **Key drivers for the metric changes:** 
 - **Recall (+13%)**: The baseline missed hundreds of ALL-CAPS names in tables. Normalizing ALL-CAPS text to Title Case recovered these false negatives.
