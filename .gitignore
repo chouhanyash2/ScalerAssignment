@@ -14,8 +14,14 @@ venv/
 env/
 .env
 
-# Large generated / sample files
+# Exclude all docx files by default...
 *.docx
+
+# ...except the assignment's required input and output documents
+!Red Herring Prospectus.docx
+!Red Herring Prospectus_REDACTED.docx
+
+# Generated / intermediate files
 workcheck_predictions.json
 ~$*
 
