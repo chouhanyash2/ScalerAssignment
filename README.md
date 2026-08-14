@@ -2,7 +2,7 @@
 
 A production-grade Python application and web interface that reads Word (`.docx`) documents, detects 21 different PII entity types using hybrid NER and custom regex pattern recognizers, and replaces every detected span with realistic synthetic fake data while preserving original document formatting.
 
-🌐 **Live Web Application**: [https://scalerassignment-1.onrender.com/](https://scalerassignment-1.onrender.com/)
+🌐 **Live Web Application**: [[https://scalerassignment-1.onrender.com/](https://scalerassignment-1.onrender.com/)](https://scalerassignment-production-15c4.up.railway.app/)
 
 ---
 
